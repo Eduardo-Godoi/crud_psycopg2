@@ -140,22 +140,15 @@ class Anime:
                 if item == 'anime':
                     data[item] = data[item].title()
 
-            columns = [sql.Identifier(key) for key in data.keys()]
-            values = [sql.Literal(value) for value in data.values()]
-            # print(columns)
-            query = sql.SQL(
-                """
-                UPDATE
-                    animes
-                SET
-                    {columns} = {values}
-                WHERE
-                    id= (%s)
-                RETURNING *
-                """).format(columns=sql.SQL(',').join(columns),
-                            values=sql.SQL(',').join(values))
+            query = sql.SQL("UPDATE animes SET {datas} WHERE id = {id} RETURNING *").format(
+                datas=sql.SQL(', ').join(
+                    sql.Composed([sql.Identifier(k), sql.SQL(" = "), sql.Placeholder(k)]) for k in data.keys()
+                ),
+                id=sql.Placeholder('id')
+                )
 
-            cur.execute(query, (id, ))
+            data.update(id=id)
+            cur.execute(query, data)
 
             fetch_result = cur.fetchone()
             Anime.commit_and_close(conn, cur)
@@ -189,3 +182,6 @@ class Anime:
 
         except (TypeError, UndefinedTable):
             return {'error': "Not Found"}, 404
+
+
+# Anime.update(1,{"anime": "mxIsTeR",})
